@@ -1,2 +1,0 @@
-# to run make sure to export path to the cmake build dir
-export GAZEBO_PLUGIN_PATH=${GAZEBO_PLUGIN_PATH}:/home/smorad/spherex_plugin/build

@@ -17,7 +17,9 @@
       </include>
 
       <!-- Attach the plugin to this model -->
-      <plugin name="spherex_control" filename="libspherex_plugin.so"/>
+      <plugin name="spherex_control" filename="libspherex_plugin.so">
+        <velocity>2</velocity>
+      </plugin>
     </model>
 
   </world>

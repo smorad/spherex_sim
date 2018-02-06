@@ -1,3 +1,0 @@
-/home/smorad/spherex_plugin/build/CMakeFiles/rebuild_cache.dir
-/home/smorad/spherex_plugin/build/CMakeFiles/spherex_plugin.dir
-/home/smorad/spherex_plugin/build/CMakeFiles/edit_cache.dir

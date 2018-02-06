@@ -8,4 +8,15 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${GAZEBO_CXX_FLAGS}")
 
 # Build our plugin
 add_library(spherex_plugin SHARED spherex_plugin.cc)
-target_link_libraries(velodyne_plugin ${GAZEBO_libraries})
+target_link_libraries(spherex_plugin ${GAZEBO_libraries})
+
+add_executable(vel vel.cc)
+
+if (${gazebo_VERSION_MAJOR} LESS 6)
+  # These two
+  include(FindBoost)
+  find_package(Boost ${MIN_BOOST_VERSION} REQUIRED system filesystem regex)
+  target_link_libraries(vel ${GAZEBO_LIBRARIES} ${Boost_LIBRARIES})
+else()
+  target_link_libraries(vel ${GAZEBO_LIBRARIES})
+endif()
