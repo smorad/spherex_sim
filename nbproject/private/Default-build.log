@@ -1,0 +1,8 @@
+Scanning dependencies of target vel
+[ 25%] Building CXX object CMakeFiles/vel.dir/vel.cc.o
+[ 50%] Linking CXX executable vel
+[ 50%] Built target vel
+Scanning dependencies of target spherex_plugin
+[ 75%] Building CXX object CMakeFiles/spherex_plugin.dir/spherex_plugin.cc.o
+[100%] Linking CXX shared library libspherex_plugin.so
+[100%] Built target spherex_plugin

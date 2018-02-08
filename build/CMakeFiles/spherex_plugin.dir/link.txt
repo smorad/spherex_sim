@@ -1,0 +1,1 @@
+/usr/bin/g++  -fPIC  -std=c++11 -g3 -gdwarf-2  -shared -Wl,-soname,libspherex_plugin.so -o libspherex_plugin.so CMakeFiles/spherex_plugin.dir/spherex_plugin.cc.o  -L/usr/lib/x86_64-linux-gnu/gazebo-7/plugins 

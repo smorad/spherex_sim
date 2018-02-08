@@ -5,104 +5,140 @@
 #include <gazebo/physics/physics.hh>
 #include <gazebo/transport/transport.hh>
 #include <gazebo/msgs/msgs.hh>
+#include <gazebo/sensors/sensors.hh>
 
-namespace gazebo
-{
-  /// \brief A plugin to control a Velodyne sensor.
-  class SphereXPlugin : public ModelPlugin
-  {
-    /// \brief Constructor
-    public: SphereXPlugin() {}
+namespace gazebo {
+    /// \brief A plugin to control a Velodyne sensor.
 
-    /// \brief The load function is called by Gazebo when the plugin is
-    /// inserted into simulation
-    /// \param[in] _model A pointer to the model that this plugin is
-    /// attached to.
-    /// \param[in] _sdf A pointer to the plugin's SDF element.
-    public: virtual void Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
-    {
-      std::cerr << "Loading spherex plugin...\n";
-      // Safety check
-      if (_model->GetJointCount() == 0)
-      {
-        std::cerr << "Invalid joint count, plugin not loaded\n";
-        return;
-      }
+    class SphereXPlugin : public ModelPlugin {
+        /// \brief Constructor
+    public:
 
-      // Store the model pointer for convenience.
-      this->model = _model;
+        SphereXPlugin() {
+        }
 
-      // Get the first joint. We are making an assumption about the model
-      // having one joint that is the rotational joint.
-      this->joint = _model->GetJoints()[0];
+        /// \brief The load function is called by Gazebo when the plugin is
+        /// inserted into simulation
+        /// \param[in] _model A pointer to the model that this plugin is
+        /// attached to.
+        /// \param[in] _sdf A pointer to the plugin's SDF element.
 
-      // Setup a P-controller, with a gain of 0.1.
-      this->pid = common::PID(0.1, 0, 0);
+        virtual void Load(physics::ModelPtr _model, sdf::ElementPtr _sdf) {
+            std::cerr << "Loading spherex plugin...\n";
+            // Safety check
+            if (_model->GetJointCount() == 0) {
+                std::cerr << "Invalid joint count, plugin not loaded\n";
+                return;
+            }
 
-      // Apply the P-controller to the joint.
-      this->model->GetJointController()->SetVelocityPID(
-          this->joint->GetScopedName(), this->pid);
+            // Create the node
+            this->node = transport::NodePtr(new transport::Node());
+            this->node->Init(_model->GetWorld()->GetName());
 
-      // Default to zero velocity
-      double velocity = 0;
+            // rotation setup
+            this->model = _model;
+            this->sdf = _sdf;
+            this->SetupRot();
+            this->SetupLidar();
 
-      // Check that the velocity element exists, then read the value
-      if (_sdf->HasElement("velocity"))
-        velocity = _sdf->Get<double>("velocity");
 
-      this->SetVelocity(velocity);
 
-      // Create the node
-      this->node = transport::NodePtr(new transport::Node());
-      #if GAZEBO_MAJOR_VERSION < 8
-      this->node->Init(this->model->GetWorld()->GetName());
-      #else
-      this->node->Init(this->model->GetWorld()->Name());
-      #endif
 
-      // Create a topic name
-      std::string topicName = "~/" + this->model->GetName() + "/vel_cmd";
-      std::cerr << "Publishing to " << topicName << "\n";
+            // Create a topic name
+            std::cerr << "Reading from " << this->rot_cmd_topic << "\n";
+            std::cerr << "Reading from " << this->lidar_cmd_topic << "\n";
+            std::cerr << "Reading from " << this->scan_topic << "\n";
 
-      // Subscribe to the topic, and register a callback
-      this->sub = this->node->Subscribe(topicName,
-         &SphereXPlugin::OnMsg, this);
-    }
+        }
 
-    /// \brief Set the velocity of the Velodyne
-    /// \param[in] _vel New target velocity
-    public: void SetVelocity(const double &_vel)
-    {
-      // Set the joint's target velocity.
-      this->model->GetJointController()->SetVelocityTarget(
-          this->joint->GetScopedName(), _vel);
-    }
+        /// \brief Set the velocity of the Velodyne
+        /// \param[in] _vel New target velocity
 
-    /// \brief Handle incoming message
-    /// \param[in] _msg Repurpose a vector3 message. This function will
-    /// only use the x component.
-    private: void OnMsg(ConstVector3dPtr &_msg)
-    {
-      this->SetVelocity(_msg->x());
-    }
+        void SetVelocity(const double &_vel) {
+            // Set the joint's target velocity.
+            this->model->GetJointController()->SetVelocityTarget(
+                    this->joint->GetScopedName(), _vel);
+        }
 
-    /// \brief A node used for transport
-    private: transport::NodePtr node;
+        /// \brief Handle incoming message
+        /// \param[in] _msg Repurpose a vector3 message. This function will
+        /// only use the x component.
+    private:
 
-    /// \brief A subscriber to a named topic.
-    private: transport::SubscriberPtr sub;
+        void VelOnMsg(ConstVector3dPtr &_msg) {
+            this->SetVelocity(_msg->x());
+        }
 
-    /// \brief Pointer to the model.
-    private: physics::ModelPtr model;
+        void Sweep(ConstVector3dPtr &_msg) {
+            // should be in Hz
+            double update_rate = this->lidar_sensor->GetUpdateRate();
+            for (int slice=0; i<this->slices; slice++){
+                double theta = this->v_angular_res * slice;
+                this->joint
+                this->lidar_sensor->SetActive(true);
+            }
+            this->lidar_sensor->SetActive(false);
 
-    /// \brief Pointer to the joint.
-    private: physics::JointPtr joint;
+            // Turn lidar on, start capturing data, sweep sensor, turn off
+            
 
-    /// \brief A PID controller for the joint.
-    private: common::PID pid;
-  };
+        }
+        
+        void WriteScan(ConstVector3dPtr &_msg){
+            // write data somewhere
+        }
 
-  // Tell Gazebo about this plugin, so that Gazebo can call Load on this plugin.
-  GZ_REGISTER_MODEL_PLUGIN(SphereXPlugin)
+        void SetupRot() {
+
+            this->joint = this->model->GetJoints()[0];
+            this->pid = common::PID(0.1, 0, 0);
+            this->model->GetJointController()->Set
+            this->model->GetJointController()->SetVelocityPID(
+                    this->joint->GetScopedName(), this->pid);
+            double velocity = 0;
+            if (this->sdf->HasElement("velocity"))
+                velocity = this->sdf->Get<double>("velocity");
+
+            this->SetVelocity(velocity);
+
+            // Subscribe to the topic, and register a callback
+            this->vel_sub = this->node->Subscribe(rot_cmd_topic,
+                    &SphereXPlugin::VelOnMsg, this);
+
+        }
+
+        void SetupLidar() {
+            this->lidar_sensor = sensors::get_sensor("sensor");
+            this->lidar_sensor->SetActive(false);
+            std::cerr << "model is " << this->lidar_sensor << "\n";
+            this->lidar_cmd_sub = this->node->Subscribe(lidar_cmd_topic,
+                    &SphereXPlugin::WriteScan, this);
+            this->scan_sub = this->node->Subscribe(scan_topic,
+                    &SphereXPlugin::Sweep, this);
+
+        }
+
+        // rot stuff
+        double full_rot = 2 * 3.1415;
+        int slices = 64;
+        double v_angular_res = full_rot / slices;
+
+        
+        sensors::SensorPtr lidar_sensor;
+        transport::NodePtr node;
+        transport::SubscriberPtr vel_sub;
+        transport::SubscriberPtr lidar_cmd_sub;
+        transport::SubscriberPtr scan_sub;
+        physics::ModelPtr model;
+        sdf::ElementPtr sdf;
+        physics::JointPtr joint;
+        common::PID pid;
+        std::string rot_cmd_topic = "~/SphereX/vel_cmd";
+        std::string lidar_cmd_topic = "~/SphereX/lidar";
+        std::string scan_topic = "~/SphereX/SphereX/SphereXMid/sensor/scan";
+    };
+
+    // Tell Gazebo about this plugin, so that Gazebo can call Load on this plugin.
+    GZ_REGISTER_MODEL_PLUGIN(SphereXPlugin)
 }
 #endif

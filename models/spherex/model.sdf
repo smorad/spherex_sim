@@ -80,6 +80,12 @@
                           <!-- Maximum angle in radians -->
                           <max_angle>0.5</max_angle>
                       </horizontal>
+<!--                      <vertical>
+                          <min_angle>0</min_angle>
+                          <max_angle>6.28</max_angle>
+                          <samples>32</samples>
+                          <resolution>1</resolution>
+                      </vertical>-->
                   </scan>
 
                   <!-- Range defines characteristics of an individual beam -->
