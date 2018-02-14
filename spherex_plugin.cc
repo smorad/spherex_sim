@@ -72,9 +72,8 @@ namespace gazebo {
         void Sweep(ConstVector3dPtr &_msg) {
             // should be in Hz
             double update_rate = this->lidar_sensor->GetUpdateRate();
-            for (int slice=0; i<this->slices; slice++){
+            for (int slice=0; slice<this->slices; slice++){
                 double theta = this->v_angular_res * slice;
-                this->joint
                 this->lidar_sensor->SetActive(true);
             }
             this->lidar_sensor->SetActive(false);
@@ -92,7 +91,6 @@ namespace gazebo {
 
             this->joint = this->model->GetJoints()[0];
             this->pid = common::PID(0.1, 0, 0);
-            this->model->GetJointController()->Set
             this->model->GetJointController()->SetVelocityPID(
                     this->joint->GetScopedName(), this->pid);
             double velocity = 0;
