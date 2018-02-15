@@ -17,6 +17,16 @@ gazebo/msgs/msgs.hh
 -
 gazebo/sensors/sensors.hh
 -
+gazebo-7/gazebo/transport/PublicationTransport.hh
+-
+gazebo-7/gazebo/transport/Publication.hh
+-
+ros/ros.h
+-
+std_msgs/String.h
+-
+sensor_msgs/LaserScan.h
+-
 
 /usr/include/gazebo-7/gazebo/Master.hh
 string
