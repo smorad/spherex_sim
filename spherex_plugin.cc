@@ -1,6 +1,7 @@
 #ifndef _VELODYNE_PLUGIN_HH_
 #define _VELODYNE_PLUGIN_HH_
 
+#include <math.h>
 #include <gazebo/gazebo.hh>
 #include <gazebo/physics/physics.hh>
 #include <gazebo/transport/transport.hh>
@@ -11,6 +12,8 @@
 #include <ros/ros.h>
 #include <std_msgs/String.h>
 #include <sensor_msgs/LaserScan.h>
+#include <sensor_msgs/PointCloud.h>
+#include <geometry_msgs/Point32.h>
 
 namespace gazebo {
     /// \brief A plugin to control a Velodyne sensor.
@@ -51,7 +54,7 @@ namespace gazebo {
 
             // Create a topic name
             std::cerr << "Reading from " << this->rot_cmd_topic << "\n";
-            std::cerr << "Reading from " << this->lidar_cmd_topic << "\n";
+            std::cerr << "Reading from " << this->scan_cmd_topic << "\n";
             std::cerr << "Reading from " << this->scan_topic << "\n";
 
         }
@@ -65,41 +68,48 @@ namespace gazebo {
                     this->joint->GetScopedName(), _vel);
         }
 
+        void Sweep(const std_msgs::String::ConstPtr& _msg) {
+            // in radians
+            std::cerr << "Reached sweep" << std::flush;
+            // in rad/s
+            // runs at 5hz, so 12
+            /*
+            double circle = 2 * 3.1415;
+            double step_size = 0.3;
+            for (int step = 0; step < circle; step += step_size) {
+                this->lidar_sensor->SetActive(true);
+                // Update causing segfaults
+                //this->lidar_sensor->Update(true);
+                this->model->GetJointController()->SetJointPosition(
+                        this->joint->GetScopedName(), step);
+                //this->lidar_sen
+            }*/
+        }
         /// \brief Handle incoming message
         /// \param[in] _msg Repurpose a vector3 message. This function will
         /// only use the x component.
     private:
 
-        void VelOnMsg(ConstVector3dPtr &_msg) {
+        void VelOnMsg(ConstVector3dPtr & _msg) {
             this->SetVelocity(_msg->x());
-        }
-
-        void Sweep(ConstVector3dPtr &_msg) {
-            // should be in Hz
-            /* double update_rate = this->lidar_sensor->GetUpdateRate();
-             for (int slice=0; slice<this->slices; slice++){
-                 double theta = this->v_angular_res * slice;
-                 this->lidar_sensor->SetActive(true);
-             }
-             this->lidar_sensor->SetActive(false);*/
-
-            // Turn lidar on, start capturing data, sweep sensor, turn off
-
-
         }
 
         void WriteScan(ConstLaserScanStampedPtr &_msg) { // const boost::shared_ptr<msgs::RaySensor>
             // We got a new message from the Gazebo sensor.  Stuff a
             // corresponding ROS message and publish it.
-            this->SetVelocity(3);
+
+            //std::cerr << "Reached writescan: is active:" <<this->lidar_sensor->IsActive()<<std::endl;
             sensor_msgs::LaserScan laser_msg;
             laser_msg.header.stamp = ros::Time(_msg->time().sec(), _msg->time().nsec());
             //laser_msg.header.frame_id = this->frame_name_;
             laser_msg.angle_min = _msg->scan().angle_min();
             laser_msg.angle_max = _msg->scan().angle_max();
-            laser_msg.angle_increment = _msg->scan().angle_step();
-            laser_msg.time_increment = 0; // instantaneous simulator scan
-            laser_msg.scan_time = 0; // not sure whether this is correct
+            // runs at 30hz but does vertical instead of horizontal
+            laser_msg.angle_increment =
+                    laser_msg.time_increment = 0; // instantaneous simulator scan
+            // repurpose scan_time as angle theta between scan plane and ref frame
+
+            laser_msg.scan_time = this->joint->GetAngle(0).Radian(); // not sure whether this is correct
             laser_msg.range_min = _msg->scan().range_min();
             laser_msg.range_max = _msg->scan().range_max();
             laser_msg.ranges.resize(_msg->scan().ranges_size());
@@ -111,6 +121,37 @@ namespace gazebo {
                     _msg->scan().intensities().end(),
                     laser_msg.intensities.begin());
             this->scan_pub.publish(laser_msg);
+            // disable scanner so we publish precisely one scan per part of the
+            // circle
+            //this->lidar_sensor->SetActive(false);
+        }
+
+        void WriteCloud(ConstLaserScanStampedPtr &_msg) {
+            sensor_msgs::PointCloud cloud_msg;
+            cloud_msg.header.stamp = ros::Time(_msg->time().sec(), _msg->time().nsec());
+            int slices = _msg->scan().count();
+            int vslices = _msg->scan().vertical_count();
+            double theta_step = _msg->scan().angle_step();
+            double phi_step = _msg->scan().vertical_angle_step();
+            std::cerr << "write cloud" << std::endl;
+            cloud_msg.points.resize(slices * vslices);
+            for (int vslice = 0; vslice < vslices; ++vslice) {
+                for (int slice = 0; slice < slices; ++slice) {
+                    geometry_msgs::Point32 p;
+                    double theta = slice * theta_step;
+                    double phi = vslice * phi_step;
+                    // index the jth vslice row and the ith slice column
+                    std::cerr<<"vslice idx "<<vslice<< " slice idx "<<slice << " pt idx "<<vslice * _msg->scan().count() + slice 
+                            << " theta "<<theta<< " phi "<< phi << std::endl;
+                    double r = _msg->scan().ranges().Get(vslice * _msg->scan().count() + slice);
+                    p.x = r * cos(theta) * cos(phi);//r * sin(phi) * cos(theta);
+                    p.y = r * sin(theta) * cos(phi);//r * sin(phi) * sin(theta);
+                    p.z = r * sin(phi);//r * cos(phi);
+                    cloud_msg.points.push_back(p);
+                }
+            }
+            this->cloud_pub.publish(cloud_msg);
+
         }
 
         void SetupRot() {
@@ -138,14 +179,15 @@ namespace gazebo {
                 return;
             }
             this->lidar_sensor = sensors::get_sensor("sensor");
-            this->lidar_sensor->SetActive(false);
-            std::cerr << "model is " << this->lidar_sensor << "\n";
-            //this->lidar_cmd_sub = this->node->Subscribe(lidar_cmd_topic,
-            //        &SphereXPlugin::WriteScan, this);
+            this->lidar_sensor->SetActive(true);
             this->scan_sub = this->node->Subscribe(scan_topic,
                     &SphereXPlugin::WriteScan, this);
-            //this->scan_pub = this->node->Advertise<msgs::RaySensor>(this->output_scan_topic);
+            this->cloud_sub = this->node->Subscribe(scan_topic,
+                    &SphereXPlugin::WriteCloud, this);
+            // Workaround for class method callback
+            //this->scan_cmd_sub = this->ros_node.subscribe(scan_cmd_topic, 1000, &SphereXPlugin::Sweep, this);
             this->scan_pub = this->ros_node.advertise<sensor_msgs::LaserScan>(output_scan_topic, 1000);
+            this->cloud_pub = this->ros_node.advertise<sensor_msgs::PointCloud>(cloud_pub_topic, 1000);
 
         }
 
@@ -160,17 +202,21 @@ namespace gazebo {
         transport::SubscriberPtr vel_sub;
         transport::SubscriberPtr lidar_cmd_sub;
         transport::SubscriberPtr scan_sub;
+        transport::SubscriberPtr cloud_sub;
         ros::NodeHandle ros_node;
         ros::Publisher scan_pub;
+        ros::Publisher cloud_pub;
+        ros::Subscriber scan_cmd_sub;
         physics::ModelPtr model;
         sdf::ElementPtr sdf;
         physics::JointPtr joint;
         common::PID pid;
         std::string rot_cmd_topic = "~/SphereX/vel_cmd";
-        std::string lidar_cmd_topic = "~/SphereX/lidar";
+        std::string scan_cmd_topic = "lidar_scan_cmd";
         std::string scan_topic = "~/SphereX/SphereX/SphereXMid/sensor/scan";
         // CANNOT HAVE ~/ prefix or gazebo will overwrite it
-        std::string output_scan_topic = "raw_lidar_scan";
+        std::string output_scan_topic = "raw_lidar_stream";
+        std::string cloud_pub_topic = "raw_pointcloud_stream";
     };
 
     // Tell Gazebo about this plugin, so that Gazebo can call Load on this plugin.

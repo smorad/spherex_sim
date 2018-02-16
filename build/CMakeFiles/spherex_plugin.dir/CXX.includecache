@@ -7,6 +7,8 @@
 #IncludeRegexTransform: 
 
 /home/smorad/spherex_sim/spherex_plugin.cc
+math.h
+-
 gazebo/gazebo.hh
 -
 gazebo/physics/physics.hh
@@ -26,6 +28,10 @@ ros/ros.h
 std_msgs/String.h
 -
 sensor_msgs/LaserScan.h
+-
+sensor_msgs/PointCloud.h
+-
+geometry_msgs/Point32.h
 -
 
 /usr/include/gazebo-7/gazebo/Master.hh
