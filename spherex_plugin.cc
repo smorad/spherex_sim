@@ -2,6 +2,8 @@
 #define _VELODYNE_PLUGIN_HH_
 
 #include <math.h>
+#include <thread>
+
 #include <gazebo/gazebo.hh>
 #include <gazebo/physics/physics.hh>
 #include <gazebo/transport/transport.hh>
@@ -10,10 +12,15 @@
 #include <gazebo-7/gazebo/transport/PublicationTransport.hh>
 #include <gazebo-7/gazebo/transport/Publication.hh>
 #include <ros/ros.h>
+#include <std_msgs/Float64MultiArray.h>
 #include <std_msgs/String.h>
 #include <sensor_msgs/LaserScan.h>
 #include <sensor_msgs/PointCloud.h>
 #include <geometry_msgs/Point32.h>
+#include <ros/subscribe_options.h>
+#include "ros/callback_queue.h"
+
+
 
 namespace gazebo {
     /// \brief A plugin to control a Velodyne sensor.
@@ -68,23 +75,22 @@ namespace gazebo {
                     this->joint->GetScopedName(), _vel);
         }
 
-        void Sweep(const std_msgs::String::ConstPtr& _msg) {
-            // in radians
-            std::cerr << "Reached sweep" << std::flush;
-            // in rad/s
-            // runs at 5hz, so 12
-            /*
-            double circle = 2 * 3.1415;
-            double step_size = 0.3;
-            for (int step = 0; step < circle; step += step_size) {
-                this->lidar_sensor->SetActive(true);
-                // Update causing segfaults
-                //this->lidar_sensor->Update(true);
-                this->model->GetJointController()->SetJointPosition(
-                        this->joint->GetScopedName(), step);
-                //this->lidar_sen
-            }*/
+        void ApplyImpulse(const std_msgs::Float64MultiArray::Ptr &_msg) {
+            // Apply impulse in the body frame
+            // Msg in the form <x, y, z, duration, local>
+
+            common::Time t;
+            math::Vector3 f(_msg->data[0], _msg->data[1], _msg->data[2]);
+            if (_msg->data[5]) {
+                this->model->GetLink("SphereXMid")->AddForce(f);
+            } else {
+                this->model->GetLink("SphereXMid")->AddRelativeForce(f);
+
+            }
+            t.Sleep(_msg->data[4]);
+            this->model->GetLink("SphereXMid")->SetForce(math::Vector3(0, 0, 0));
         }
+
         /// \brief Handle incoming message
         /// \param[in] _msg Repurpose a vector3 message. This function will
         /// only use the x component.
@@ -105,9 +111,8 @@ namespace gazebo {
             laser_msg.angle_min = _msg->scan().angle_min();
             laser_msg.angle_max = _msg->scan().angle_max();
             // runs at 30hz but does vertical instead of horizontal
-            laser_msg.angle_increment =
-                    laser_msg.time_increment = 0; // instantaneous simulator scan
-            // repurpose scan_time as angle theta between scan plane and ref frame
+            laser_msg.angle_increment = _msg->scan().angle_step();
+            laser_msg.time_increment = 0; // instantaneous simulator scan
 
             laser_msg.scan_time = this->joint->GetAngle(0).Radian(); // not sure whether this is correct
             laser_msg.range_min = _msg->scan().range_min();
@@ -121,9 +126,6 @@ namespace gazebo {
                     _msg->scan().intensities().end(),
                     laser_msg.intensities.begin());
             this->scan_pub.publish(laser_msg);
-            // disable scanner so we publish precisely one scan per part of the
-            // circle
-            //this->lidar_sensor->SetActive(false);
         }
 
         void WriteCloud(ConstLaserScanStampedPtr &_msg) {
@@ -133,20 +135,17 @@ namespace gazebo {
             int vslices = _msg->scan().vertical_count();
             double theta_step = _msg->scan().angle_step();
             double phi_step = _msg->scan().vertical_angle_step();
-            std::cerr << "write cloud" << std::endl;
-            cloud_msg.points.resize(slices * vslices);
+
             for (int vslice = 0; vslice < vslices; ++vslice) {
                 for (int slice = 0; slice < slices; ++slice) {
                     geometry_msgs::Point32 p;
                     double theta = slice * theta_step;
                     double phi = vslice * phi_step;
                     // index the jth vslice row and the ith slice column
-                    std::cerr<<"vslice idx "<<vslice<< " slice idx "<<slice << " pt idx "<<vslice * _msg->scan().count() + slice 
-                            << " theta "<<theta<< " phi "<< phi << std::endl;
                     double r = _msg->scan().ranges().Get(vslice * _msg->scan().count() + slice);
-                    p.x = r * cos(theta) * cos(phi);//r * sin(phi) * cos(theta);
-                    p.y = r * sin(theta) * cos(phi);//r * sin(phi) * sin(theta);
-                    p.z = r * sin(phi);//r * cos(phi);
+                    p.x = r * cos(theta) * cos(phi); //r * sin(phi) * cos(theta);
+                    p.y = r * sin(theta) * cos(phi); //r * sin(phi) * sin(theta);
+                    p.z = r * sin(phi); //r * cos(phiOnRosMsg);
                     cloud_msg.points.push_back(p);
                 }
             }
@@ -184,10 +183,30 @@ namespace gazebo {
                     &SphereXPlugin::WriteScan, this);
             this->cloud_sub = this->node->Subscribe(scan_topic,
                     &SphereXPlugin::WriteCloud, this);
-            // Workaround for class method callback
-            //this->scan_cmd_sub = this->ros_node.subscribe(scan_cmd_topic, 1000, &SphereXPlugin::Sweep, this);
             this->scan_pub = this->ros_node.advertise<sensor_msgs::LaserScan>(output_scan_topic, 1000);
             this->cloud_pub = this->ros_node.advertise<sensor_msgs::PointCloud>(cloud_pub_topic, 1000);
+            //<std_msgs::Float64>(thruster_cmd_sub_topic, 1000);
+
+        }
+
+        void SetupThruster() {
+            /*
+            ros::SubscribeOptions so =
+                    ros::SubscribeOptions::create<std_msgs::Float64MultiArray>(
+                    "/apply_impulse",
+                    1,
+                    boost::bind(&SphereXPlugin::ApplyImpulse, this, _1),
+                    ros::VoidPtr(),
+                    &this->rosQueue);
+            this->thruster_cmd_sub = this->ros_node.subscribe(so);*/
+
+            this->thruster_cmd_sub = this->ros_node.subscribe(
+                    this->thruster_cmd_sub_topic,
+                    1000,
+                    &SphereXPlugin::ApplyImpulse,
+                    this
+                    );
+            //this->thruster_cmd_sub = this->ros_node->subscribe
 
         }
 
@@ -206,7 +225,7 @@ namespace gazebo {
         ros::NodeHandle ros_node;
         ros::Publisher scan_pub;
         ros::Publisher cloud_pub;
-        ros::Subscriber scan_cmd_sub;
+        ros::Subscriber thruster_cmd_sub;
         physics::ModelPtr model;
         sdf::ElementPtr sdf;
         physics::JointPtr joint;
@@ -217,6 +236,14 @@ namespace gazebo {
         // CANNOT HAVE ~/ prefix or gazebo will overwrite it
         std::string output_scan_topic = "raw_lidar_stream";
         std::string cloud_pub_topic = "raw_pointcloud_stream";
+        std::string thruster_cmd_sub_topic = "thruster_cmd";
+
+    private:
+        ros::CallbackQueue rosQueue;
+    private:
+        std::thread rosQueueThread;
+
+
     };
 
     // Tell Gazebo about this plugin, so that Gazebo can call Load on this plugin.
