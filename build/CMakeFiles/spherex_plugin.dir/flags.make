@@ -4,7 +4,7 @@
 # compile CXX with /usr/bin/g++
 CXX_FLAGS =  -std=c++11 -g3 -gdwarf-2 -fPIC   -std=gnu++14
 
-CXX_DEFINES = -Dspherex_plugin_EXPORTS
+CXX_DEFINES = -DROS_PACKAGE_NAME=\"Project\" -Dspherex_plugin_EXPORTS
 
 CXX_INCLUDES = -I/usr/include/gazebo-7 -I/usr/include/sdformat-4.0 -I/usr/include/ignition/math2 -I/usr/include/OGRE -I/usr/include/OGRE/Terrain -I/usr/include/OGRE/Paging 
 

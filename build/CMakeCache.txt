@@ -510,6 +510,9 @@ Project_SOURCE_DIR:STATIC=/home/smorad/spherex_sim
 //The directory containing a CMake configuration file for SDFormat.
 SDFormat_DIR:PATH=/usr/lib/x86_64-linux-gnu/cmake/sdformat
 
+//The directory containing a CMake configuration file for cpp_common.
+cpp_common_DIR:PATH=/usr/share/cpp_common/cmake
+
 //The directory containing a CMake configuration file for gazebo.
 gazebo_DIR:PATH=/usr/lib/x86_64-linux-gnu/cmake/gazebo
 
@@ -519,11 +522,44 @@ gazebo_proto_msgs_lib:FILEPATH=/usr/lib/x86_64-linux-gnu/libgazebo_msgs.so
 //The directory containing a CMake configuration file for ignition-math2.
 ignition-math2_DIR:PATH=/usr/lib/x86_64-linux-gnu/cmake/ignition-math2
 
+//The directory containing a CMake configuration file for image_transport.
+image_transport_DIR:PATH=image_transport_DIR-NOTFOUND
+
+//Path to a library.
+lib:FILEPATH=/usr/lib/x86_64-linux-gnu/libxmlrpcpp.so
+
+//The directory containing a CMake configuration file for message_runtime.
+message_runtime_DIR:PATH=/usr/share/message_runtime/cmake
+
 //Path to a library.
 onelib:FILEPATH=/usr/lib/x86_64-linux-gnu/libignition-math2.so
 
+//The directory containing a CMake configuration file for rosconsole.
+rosconsole_DIR:PATH=/usr/share/rosconsole/cmake
+
+//The directory containing a CMake configuration file for roscpp.
+roscpp_DIR:PATH=/usr/share/roscpp/cmake
+
+//The directory containing a CMake configuration file for roscpp_serialization.
+roscpp_serialization_DIR:PATH=/usr/share/roscpp_serialization/cmake
+
+//The directory containing a CMake configuration file for roscpp_traits.
+roscpp_traits_DIR:PATH=/usr/share/roscpp_traits/cmake
+
+//The directory containing a CMake configuration file for rosgraph_msgs.
+rosgraph_msgs_DIR:PATH=/usr/share/rosgraph_msgs/cmake
+
+//The directory containing a CMake configuration file for rostime.
+rostime_DIR:PATH=/usr/share/rostime/cmake
+
 //Dependencies for target
 spherex_plugin_LIB_DEPENDS:STATIC=
+
+//The directory containing a CMake configuration file for std_msgs.
+std_msgs_DIR:PATH=/usr/share/std_msgs/cmake
+
+//The directory containing a CMake configuration file for xmlrpcpp.
+xmlrpcpp_DIR:PATH=/usr/share/xmlrpcpp/cmake
 
 
 ########################

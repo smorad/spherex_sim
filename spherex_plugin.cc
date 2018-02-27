@@ -19,6 +19,7 @@
 #include <geometry_msgs/Point32.h>
 #include <ros/subscribe_options.h>
 #include "ros/callback_queue.h"
+#include <sensor_msgs/Image.h>
 
 
 
@@ -50,19 +51,11 @@ namespace gazebo {
             this->node = transport::NodePtr(new transport::Node());
             this->node->Init(_model->GetWorld()->GetName());
 
-            // rotation setup
             this->model = _model;
             this->sdf = _sdf;
             this->SetupRot();
             this->SetupLidar();
-
-
-
-
-            // Create a topic name
-            std::cerr << "Reading from " << this->rot_cmd_topic << "\n";
-            std::cerr << "Reading from " << this->scan_cmd_topic << "\n";
-            std::cerr << "Reading from " << this->scan_topic << "\n";
+            this->SetupCamera();
 
         }
 
@@ -96,11 +89,66 @@ namespace gazebo {
         /// only use the x component.
     private:
 
-        void VelOnMsg(ConstVector3dPtr & _msg) {
+        void VelOnMsg(ConstVector3dPtr& _msg) {
             this->SetVelocity(_msg->x());
         }
 
-        void WriteScan(ConstLaserScanStampedPtr &_msg) { // const boost::shared_ptr<msgs::RaySensor>
+        void WriteCam1(ConstImageStampedPtr& _msg) {
+            /* Read a gazebo img and send a sensor_msg image to ros*/
+            // Sometimes a null msg is sent, gazebo bug?
+            if (_msg == nullptr) {
+                std::cerr << "Camera received null image ptr: " << _msg << std::endl;
+                return;
+            }
+            common::Image in_img;
+            sensor_msgs::Image out_img;
+            // unwrap stamped img msg to img
+            msgs::Set(in_img, _msg->image());
+            //std::cerr << "Got px fmt: " << common::PixelFormatNames[in_img.GetPixelFormat()] << std::endl;
+
+
+            int bufsize = in_img.GetWidth() * in_img.GetHeight() * in_img.GetBPP() / 8;
+            std::cerr << "bufsize " << bufsize << std::endl;
+            unsigned int outsize = 0; // bytes
+            // GetData expects a ptr to a char*
+            // Alloca will free after function scope
+            unsigned char** data_ptr = (unsigned char**) alloca(bufsize);
+
+
+            out_img.height = in_img.GetHeight();
+            out_img.width = in_img.GetWidth();
+            out_img.step = in_img.GetBPP() * in_img.GetWidth();
+            out_img.encoding = common::PixelFormatNames[in_img.GetPixelFormat()];
+            in_img.GetData(data_ptr, outsize);
+            //std::vector <unsigned char> v(*data, *data + sizeof(*data) / sizeof(*data[0]));
+            std::cout << "data " << data_ptr << std::endl;
+            //out_img.data = v;
+            for (int i = 0; i<outsize / sizeof (char*); ++i) {
+                // deref pointer to 1d char array
+                out_img.data.push_back((*data_ptr)[i]);
+            }
+            //std::cerr << "got data of size " << outsize << std::endl;
+            //std::cerr << "actually of size " << out_img.data.size() << std::endl;
+
+            this->cam1_pub.publish(out_img);
+
+
+            /*
+            msgs::Image in_img = _msg->image();
+            //common::Image img = _msg->image();
+            //std::cerr << "Got px fmt: " << in_img.pixel_format() << std::endl;
+            // px fmt is RGB_INT8
+            out_img.encoding = "RGB_INT8";
+            out_img.width = in_img.width();
+            out_img.height = in_img.height();
+            out_img.step = in_img.step(); // sizeof one horizontal row
+            //out_img.data = in_img.data();
+            //this->cam1_pub.publish(out_img);
+             */
+        }
+
+        /*
+        void WriteScan(ConstLaserScanStampedPtr &_msg) {
             // We got a new message from the Gazebo sensor.  Stuff a
             // corresponding ROS message and publish it.
 
@@ -126,7 +174,7 @@ namespace gazebo {
                     _msg->scan().intensities().end(),
                     laser_msg.intensities.begin());
             this->scan_pub.publish(laser_msg);
-        }
+        }*/
 
         void WriteCloud(ConstLaserScanStampedPtr &_msg) {
             sensor_msgs::PointCloud cloud_msg;
@@ -179,34 +227,29 @@ namespace gazebo {
             }
             this->lidar_sensor = sensors::get_sensor("sensor");
             this->lidar_sensor->SetActive(true);
-            this->scan_sub = this->node->Subscribe(scan_topic,
-                    &SphereXPlugin::WriteScan, this);
+            /*this->scan_sub = this->node->Subscribe(scan_topic,
+                    &SphereXPlugin::WriteScan, this);*/
             this->cloud_sub = this->node->Subscribe(scan_topic,
                     &SphereXPlugin::WriteCloud, this);
-            this->scan_pub = this->ros_node.advertise<sensor_msgs::LaserScan>(output_scan_topic, 1000);
+            //this->scan_pub = this->ros_node.advertise<sensor_msgs::LaserScan>(output_scan_topic, 1000);
             this->cloud_pub = this->ros_node.advertise<sensor_msgs::PointCloud>(cloud_pub_topic, 1000);
-            //<std_msgs::Float64>(thruster_cmd_sub_topic, 1000);
+        }
 
+        void SetupCamera() {
+            this->cam1 = sensors::get_sensor("cam1");
+            this->cam1->SetActive(true);
+            this->cam1_sub = this->node->Subscribe(cam1_sub_topic,
+                    &SphereXPlugin::WriteCam1, this);
+            this->cam1_pub = this->ros_node.advertise<sensor_msgs::Image>(cam1_pub_topic, 1000);
         }
 
         void SetupThruster() {
-            /*
-            ros::SubscribeOptions so =
-                    ros::SubscribeOptions::create<std_msgs::Float64MultiArray>(
-                    "/apply_impulse",
-                    1,
-                    boost::bind(&SphereXPlugin::ApplyImpulse, this, _1),
-                    ros::VoidPtr(),
-                    &this->rosQueue);
-            this->thruster_cmd_sub = this->ros_node.subscribe(so);*/
-
             this->thruster_cmd_sub = this->ros_node.subscribe(
                     this->thruster_cmd_sub_topic,
                     1000,
                     &SphereXPlugin::ApplyImpulse,
                     this
                     );
-            //this->thruster_cmd_sub = this->ros_node->subscribe
 
         }
 
@@ -215,32 +258,53 @@ namespace gazebo {
         int slices = 64;
         double v_angular_res = full_rot / slices;
 
-
-        sensors::SensorPtr lidar_sensor;
         transport::NodePtr node;
-        transport::SubscriberPtr vel_sub;
-        transport::SubscriberPtr lidar_cmd_sub;
-        transport::SubscriberPtr scan_sub;
-        transport::SubscriberPtr cloud_sub;
         ros::NodeHandle ros_node;
-        ros::Publisher scan_pub;
+
+
+        // lidar
+        sensors::SensorPtr lidar_sensor;
+        transport::SubscriberPtr lidar_cmd_sub;
+        //transport::SubscriberPtr scan_sub;
+        //ros::Publisher scan_pub;
         ros::Publisher cloud_pub;
-        ros::Subscriber thruster_cmd_sub;
+        transport::SubscriberPtr cloud_sub;
+        std::string scan_topic = "~/SphereX/SphereX/SphereXMid/sensor/scan";
+        std::string cloud_pub_topic = "raw_pointcloud_stream";
+
+
+
+        // camera
+        transport::SubscriberPtr cam1_sub;
+        sensors::SensorPtr cam1;
+        ros::Publisher cam1_pub;
+        //std::string cam1_sub_topic = "~/SphereX/SphereX/SphereXMid/cam1/image";
+        std::string cam1_sub_topic = "/gazebo/default/SphereX/SphereX/SphereXMid/cam1/image";
+        std::string cam1_pub_topic = "cam1_stream";
+
+
+        // movement
         physics::ModelPtr model;
         sdf::ElementPtr sdf;
+
+        // rot
         physics::JointPtr joint;
         common::PID pid;
+        transport::SubscriberPtr vel_sub;
         std::string rot_cmd_topic = "~/SphereX/vel_cmd";
-        std::string scan_cmd_topic = "lidar_scan_cmd";
-        std::string scan_topic = "~/SphereX/SphereX/SphereXMid/sensor/scan";
+
+
+        // thrust
+        ros::Subscriber thruster_cmd_sub;
         // CANNOT HAVE ~/ prefix or gazebo will overwrite it
-        std::string output_scan_topic = "raw_lidar_stream";
-        std::string cloud_pub_topic = "raw_pointcloud_stream";
         std::string thruster_cmd_sub_topic = "thruster_cmd";
+
+
+
+        //std::string output_scan_topic = "raw_lidar_stream";
 
     private:
         ros::CallbackQueue rosQueue;
-    private:
         std::thread rosQueueThread;
 
 

@@ -7,13 +7,15 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Find Gazebo
 find_package(gazebo REQUIRED)
+find_package(roscpp REQUIRED)
 include_directories(${GAZEBO_INCLUDE_DIRS})
+
 link_directories(${GAZEBO_LIBRARY_DIRS})
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${GAZEBO_CXX_FLAGS}")
 
 # Build our plugin
 add_library(spherex_plugin SHARED spherex_plugin.cc)
-target_link_libraries(spherex_plugin ${GAZEBO_libraries})
+target_link_libraries(spherex_plugin ${GAZEBO_libraries} ${roscppLIBRARIES})
 
 add_executable(vel vel.cc)
 

@@ -16,7 +16,25 @@
           </df>
           <df name="Progress">
           </df>
+          <df name="roscpp_generate_messages_cpp.dir">
+          </df>
+          <df name="roscpp_generate_messages_lisp.dir">
+          </df>
+          <df name="roscpp_generate_messages_py.dir">
+          </df>
+          <df name="rosgraph_msgs_generate_messages_cpp.dir">
+          </df>
+          <df name="rosgraph_msgs_generate_messages_lisp.dir">
+          </df>
+          <df name="rosgraph_msgs_generate_messages_py.dir">
+          </df>
           <df name="spherex_plugin.dir">
+          </df>
+          <df name="std_msgs_generate_messages_cpp.dir">
+          </df>
+          <df name="std_msgs_generate_messages_lisp.dir">
+          </df>
+          <df name="std_msgs_generate_messages_py.dir">
           </df>
           <df name="vel.dir">
           </df>
@@ -42,6 +60,8 @@
           </df>
         </df>
         <df name="ground_plane">
+        </df>
+        <df name="itokawa">
         </df>
         <df name="spherex">
         </df>

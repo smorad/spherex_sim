@@ -41,6 +41,8 @@ ros/subscribe_options.h
 -
 ros/callback_queue.h
 /home/smorad/spherex_sim/ros/callback_queue.h
+sensor_msgs/Image.h
+-
 
 /usr/include/gazebo-7/gazebo/Master.hh
 string

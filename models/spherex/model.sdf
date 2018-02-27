@@ -42,43 +42,33 @@
         </link>
 
         <link name="SphereXMid">
+            
+            <sensor type="camera" name="cam1">
+                <camera>
+                    <pose>0 0 0 -1.57 0 0</pose>
+                    <horizontal_fov>1</horizontal_fov>
+                    <image>
+                        <width>320</width>
+                        <height>240</height>
+                    </image>
+                    <clip>
+                        <far>30</far>
+                    </clip>
+                </camera>
+                <update_rate>10</update_rate>
+                <always_on>1</always_on>
+            </sensor>
 
-            <!-- lidar sensor config -->
-            <!-- Add a ray sensor, and give it a name -->
             <sensor type="ray" name="sensor">
                 <topic>~/test_topic</topic>
-
-                <!-- Position the ray sensor based on the specification. Also rotate
-                it by 90 degrees around the X-axis so that the <horizontal> rays
-                become vertical -->
                 <pose>0 0 0 -1.57 0 0</pose>
-
-                <!-- Enable visualization to see the rays in the GUI -->
-                <!--visualize>true</visualize-->
-
-                <!-- Set the update rate of the sensor -->
                 <update_rate>1</update_rate>
                 <ray>
-
-                    <!-- The scan element contains the horizontal and vertical beams.
-                    We are leaving out the vertical beams for this tutorial. -->
                     <scan>
-
-                        <!-- The horizontal beams -->
                         <vertical>
-                            <!-- The velodyne has 32 beams(samples) -->
                             <samples>16</samples>
-
-                            <!-- Resolution is multiplied by samples to determine number of
-                            simulated beams vs interpolated beams. See:
-                            http://sdformat.org/spec?ver=1.6&elem=sensor#horizontal_resolution
-                            -->
                             <resolution>1</resolution>
-
-                            <!-- Minimum angle in radians -->
                             <min_angle>0</min_angle>
-
-                            <!-- Maximum angle in radians -->
                             <max_angle>0.3</max_angle>
                         </vertical>
                         
@@ -88,25 +78,10 @@
                             <min_angle>0.0</min_angle>
                             <max_angle>6.28</max_angle>
                         </horizontal>
-                       
-                        <!--                      <vertical>
-                            <min_angle>0</min_angle>
-                            <max_angle>6.28</max_angle>
-                            <samples>32</samples>
-                            <resolution>1</resolution>
-                        </vertical>-->
                     </scan>
-
-                    <!-- Range defines characteristics of an individual beam -->
                     <range>
-
-                        <!-- Minimum distance of the beam -->
                         <min>0.28</min>
-
-                        <!-- Maximum distance of the beam -->
                         <max>15</max>
-
-                        <!-- Linear resolution of the beam -->
                         <resolution>0.02</resolution>
                     </range>
                 </ray>
@@ -124,8 +99,6 @@
                     <iyz>0</iyz> 
                 </inertia> 
             </inertial>
-
-            <!-- The visual is mostly a copy of the collision -->
             <visual name="mid_visual">
                 <geometry>
                     <mesh>
