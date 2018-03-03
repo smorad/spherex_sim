@@ -14,8 +14,6 @@
           </df>
           <df name="CMakeTmp">
           </df>
-          <df name="Progress">
-          </df>
           <df name="roscpp_generate_messages_cpp.dir">
           </df>
           <df name="roscpp_generate_messages_lisp.dir">
@@ -74,6 +72,8 @@
           </df>
           <df name="meshes">
           </df>
+        </df>
+        <df name="tube">
         </df>
       </df>
       <df name="spherex_sim">

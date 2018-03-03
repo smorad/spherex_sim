@@ -1,32 +1,40 @@
 <?xml version="1.0" ?>
 <sdf version="1.5">
-  <world name="default">
-    <!-- A global light source -->
-    <include>
-      <uri>model://sun</uri>
-    </include>
-    <!-- A ground plane -->
-    <include>
-      <uri>model://ground_plane</uri>
-    </include>
+    <world name="default">
+        <!-- A global light source -->
+        <include>
+            <uri>model://sun</uri>
+        </include>
+    
+        <gravity>0 0 -1.625</gravity>
 
-    <!-- A testing model that includes the Velodyne sensor model -->
-    <model name="SphereX">
-      <include>
-        <uri>model://spherex</uri>
-      </include>
+        <!-- A ground plane -->
+<!--        <include>
+          <uri>model://ground_plane</uri>
+        </include>-->
+    
+        <!-- Lava tube -->
+        <include>
+            <uri>model://tube</uri>
+        </include>
 
-      <!-- Attach the plugin to this model -->
-      <plugin name="spherex_control" filename="libspherex_plugin.so">
-        <velocity>2</velocity>
-      </plugin>
-    </model>
+        <!-- A testing model that includes the Velodyne sensor model -->
+        <model name="SphereX">
+            <include>
+                <uri>model://spherex</uri>
+            </include>
 
-    <include>
-      <uri>model://gas_station</uri>
-      <pose>-2.0 7.0 0 0 0 0</pose>
-    </include>
+            <!-- Attach the plugin to this model -->
+            <plugin name="spherex_control" filename="libspherex_plugin.so">
+              <velocity>2</velocity>
+            </plugin>
+        </model>
+
+        <!--    <include>
+          <uri>model://gas_station</uri>
+          <pose>-2.0 7.0 0 0 0 0</pose>
+        </include>-->
 
 
-  </world>
+    </world>
 </sdf>

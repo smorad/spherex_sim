@@ -20,6 +20,11 @@
 #include <ros/subscribe_options.h>
 #include "ros/callback_queue.h"
 #include <sensor_msgs/Image.h>
+#include <sensor_msgs/Imu.h>
+#include <geometry_msgs/Quaternion.h>
+#include <geometry_msgs/Vector3.h>
+
+
 
 
 
@@ -92,6 +97,35 @@ namespace gazebo {
         void VelOnMsg(ConstVector3dPtr& _msg) {
             this->SetVelocity(_msg->x());
         }
+/*
+        void WriteIMU(ros::Time t) {
+            // Generate IMU data and apply timestamp to it
+
+            sensor_msgs::Imu msg_out;
+            msg_out.header.stamp = t;
+
+            geometry_msgs::Vector3 ang_vel_out;
+            ang_vel_out.x = ang_vel_in.X();
+            ang_vel_out.y = ang_vel_in.Y();
+            ang_vel_out.z = ang_vel_in.Z();
+            msg_out.angular_velocity = ang_vel_out;
+
+            auto ori_in = this->imu->Pose().Rot();
+            geometry_msgs::Quaternion ori_out;
+            ori_out.w = ori_in.W();
+            ori_out.x = ori_in.X();
+            ori_out.y = ori_in.Y();
+            ori_out.z = ori_in.Z();
+            msg_out.orientation = ori_out;
+            
+            auto lin_in = this->imu->LinearAcceleration(false);
+            geometry_msgs::Vector3 lin_out;
+            msg_out.linear_acceleration = lin_out;
+            
+            // no cov mats published
+            this->imu_pub.publish(msg_out);
+
+        }*/
 
         void WriteCam1(ConstImageStampedPtr& _msg) {
             /* Read a gazebo img and send a sensor_msg image to ros*/
@@ -108,22 +142,23 @@ namespace gazebo {
 
 
             int bufsize = in_img.GetWidth() * in_img.GetHeight() * in_img.GetBPP() / 8;
-            std::cerr << "bufsize " << bufsize << std::endl;
+            //std::cerr << "bufsize " << bufsize << std::endl;
             unsigned int outsize = 0; // bytes
             // GetData expects a ptr to a char*
             // Alloca will free after function scope
             unsigned char** data_ptr = (unsigned char**) alloca(bufsize);
 
-
+            out_img.header.stamp = ros::Time().now();
+            // record IMU data for image reconstruction
             out_img.height = in_img.GetHeight();
             out_img.width = in_img.GetWidth();
             out_img.step = in_img.GetBPP() * in_img.GetWidth();
             out_img.encoding = common::PixelFormatNames[in_img.GetPixelFormat()];
             in_img.GetData(data_ptr, outsize);
             //std::vector <unsigned char> v(*data, *data + sizeof(*data) / sizeof(*data[0]));
-            std::cout << "data " << data_ptr << std::endl;
+            //std::cout << "data " << data_ptr << std::endl;
             //out_img.data = v;
-            for (int i = 0; i<outsize / sizeof (char*); ++i) {
+            for (int i = 0; i < outsize / sizeof (char*); ++i) {
                 // deref pointer to 1d char array
                 out_img.data.push_back((*data_ptr)[i]);
             }
@@ -131,50 +166,8 @@ namespace gazebo {
             //std::cerr << "actually of size " << out_img.data.size() << std::endl;
 
             this->cam1_pub.publish(out_img);
-
-
-            /*
-            msgs::Image in_img = _msg->image();
-            //common::Image img = _msg->image();
-            //std::cerr << "Got px fmt: " << in_img.pixel_format() << std::endl;
-            // px fmt is RGB_INT8
-            out_img.encoding = "RGB_INT8";
-            out_img.width = in_img.width();
-            out_img.height = in_img.height();
-            out_img.step = in_img.step(); // sizeof one horizontal row
-            //out_img.data = in_img.data();
-            //this->cam1_pub.publish(out_img);
-             */
+            //this->WriteIMU(out_img.header.stamp);
         }
-
-        /*
-        void WriteScan(ConstLaserScanStampedPtr &_msg) {
-            // We got a new message from the Gazebo sensor.  Stuff a
-            // corresponding ROS message and publish it.
-
-            //std::cerr << "Reached writescan: is active:" <<this->lidar_sensor->IsActive()<<std::endl;
-            sensor_msgs::LaserScan laser_msg;
-            laser_msg.header.stamp = ros::Time(_msg->time().sec(), _msg->time().nsec());
-            //laser_msg.header.frame_id = this->frame_name_;
-            laser_msg.angle_min = _msg->scan().angle_min();
-            laser_msg.angle_max = _msg->scan().angle_max();
-            // runs at 30hz but does vertical instead of horizontal
-            laser_msg.angle_increment = _msg->scan().angle_step();
-            laser_msg.time_increment = 0; // instantaneous simulator scan
-
-            laser_msg.scan_time = this->joint->GetAngle(0).Radian(); // not sure whether this is correct
-            laser_msg.range_min = _msg->scan().range_min();
-            laser_msg.range_max = _msg->scan().range_max();
-            laser_msg.ranges.resize(_msg->scan().ranges_size());
-            std::copy(_msg->scan().ranges().begin(),
-                    _msg->scan().ranges().end(),
-                    laser_msg.ranges.begin());
-            laser_msg.intensities.resize(_msg->scan().intensities_size());
-            std::copy(_msg->scan().intensities().begin(),
-                    _msg->scan().intensities().end(),
-                    laser_msg.intensities.begin());
-            this->scan_pub.publish(laser_msg);
-        }*/
 
         void WriteCloud(ConstLaserScanStampedPtr &_msg) {
             sensor_msgs::PointCloud cloud_msg;
@@ -235,6 +228,12 @@ namespace gazebo {
             this->cloud_pub = this->ros_node.advertise<sensor_msgs::PointCloud>(cloud_pub_topic, 1000);
         }
 
+        void SetupIMU() {
+            this->imu = sensors::get_sensor("imu");
+            this->imu->SetActive(true);
+            this->imu_pub = this->ros_node.advertise<sensor_msgs::Imu>(imu_pub_topic, 1000);
+        }
+
         void SetupCamera() {
             this->cam1 = sensors::get_sensor("cam1");
             this->cam1->SetActive(true);
@@ -286,6 +285,11 @@ namespace gazebo {
         // movement
         physics::ModelPtr model;
         sdf::ElementPtr sdf;
+
+        // imu
+        sensors::SensorPtr imu;
+        ros::Publisher imu_pub;
+        std::string imu_pub_topic = "imu_stream";
 
         // rot
         physics::JointPtr joint;

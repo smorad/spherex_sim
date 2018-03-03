@@ -43,6 +43,12 @@ ros/callback_queue.h
 /home/smorad/spherex_sim/ros/callback_queue.h
 sensor_msgs/Image.h
 -
+sensor_msgs/Imu.h
+-
+geometry_msgs/Quaternion.h
+-
+geometry_msgs/Vector3.h
+-
 
 /usr/include/gazebo-7/gazebo/Master.hh
 string
