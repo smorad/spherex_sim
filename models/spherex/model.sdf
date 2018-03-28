@@ -57,28 +57,28 @@
                         <height>240</height>
                     </image>
                     <clip>
-                        <far>30</far>
+                        <far>100</far>
                     </clip>
                 </camera>
-                <update_rate>10</update_rate>
+                <update_rate>20</update_rate>
                 <always_on>1</always_on>
             </sensor>
 
             <sensor type="ray" name="sensor">
                 <topic>~/test_topic</topic>
                 <pose>0 0 0 -1.57 0 0</pose>
-                <update_rate>1</update_rate>
+                <update_rate>20</update_rate>
                 <ray>
                     <scan>
                         <vertical>
                             <samples>16</samples>
                             <resolution>1</resolution>
                             <min_angle>0</min_angle>
-                            <max_angle>0.3</max_angle>
+                            <max_angle>1</max_angle>
                         </vertical>
                         
                         <horizontal>
-                            <samples>256</samples>
+                            <samples>128</samples>
                             <resolution>1</resolution>
                             <min_angle>0.0</min_angle>
                             <max_angle>6.28</max_angle>
@@ -86,7 +86,7 @@
                     </scan>
                     <range>
                         <min>0.28</min>
-                        <max>15</max>
+                        <max>100</max>
                         <resolution>0.02</resolution>
                     </range>
                 </ray>
