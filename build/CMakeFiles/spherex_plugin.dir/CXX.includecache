@@ -19,7 +19,11 @@ gazebo/transport/transport.hh
 -
 gazebo/msgs/msgs.hh
 -
+gazebo/physics/ModelState.hh
+-
 gazebo/sensors/sensors.hh
+-
+gazebo/math/Pose.hh
 -
 gazebo-7/gazebo/transport/PublicationTransport.hh
 -

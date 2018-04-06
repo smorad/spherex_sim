@@ -8,7 +8,9 @@
 #include <gazebo/physics/physics.hh>
 #include <gazebo/transport/transport.hh>
 #include <gazebo/msgs/msgs.hh>
+#include <gazebo/physics/ModelState.hh>
 #include <gazebo/sensors/sensors.hh>
+#include <gazebo/math/Pose.hh>
 #include <gazebo-7/gazebo/transport/PublicationTransport.hh>
 #include <gazebo-7/gazebo/transport/Publication.hh>
 #include <ros/ros.h>
@@ -61,6 +63,7 @@ namespace gazebo {
             this->SetupRot();
             this->SetupLidar();
             this->SetupCamera();
+            this->SetupThruster();
 
         }
 
@@ -78,15 +81,26 @@ namespace gazebo {
             // Msg in the form <x, y, z, duration, local>
 
             common::Time t;
+            auto link = this->model->GetLink("SphereX::SphereXMid");
+            auto model = this->model.get();
+            //std::cerr << "Model: " << model->GetName() << std::endl;
+            //std::cerr << "links size " << model->GetLinks().size() << std::endl;
+            //for (int i = 0; i < model->GetLinks().size(); ++i) {
+            //    std::cerr << "link: " << model->GetLinks().at(i)->GetName() << std::endl;
+            //}
+            if (!link) {
+                std::cerr << "Not applying force, linkptr is " << link << std::endl;
+                return;
+            }
             math::Vector3 f(_msg->data[0], _msg->data[1], _msg->data[2]);
-            if (_msg->data[5]) {
-                this->model->GetLink("SphereXMid")->AddForce(f);
+            if (_msg->data[4]) {
+                link->AddForce(f);
             } else {
-                this->model->GetLink("SphereXMid")->AddRelativeForce(f);
+                link->AddRelativeForce(f);
 
             }
-            t.Sleep(_msg->data[4]);
-            this->model->GetLink("SphereXMid")->SetForce(math::Vector3(0, 0, 0));
+            //t.Sleep(_msg->data[3]);
+            //link->SetForce(math::Vector3(0, 0, 0));
         }
 
         /// \brief Handle incoming message
@@ -97,7 +111,8 @@ namespace gazebo {
         void VelOnMsg(ConstVector3dPtr& _msg) {
             this->SetVelocity(_msg->x());
         }
-/*
+
+        /*
         void WriteIMU(ros::Time t) {
             // Generate IMU data and apply timestamp to it
 
@@ -169,9 +184,29 @@ namespace gazebo {
             //this->WriteIMU(out_img.header.stamp);
         }
 
+        void WriteIMU(ros::Time t) {
+            sensor_msgs::Imu imu_msg;
+            math::Pose pose = this->model->GetWorldPose();
+
+            imu_msg.header.stamp = t;
+            imu_msg.orientation.w = pose.rot.w;
+            imu_msg.orientation.x = pose.rot.x;
+            imu_msg.orientation.y = pose.rot.y;
+            imu_msg.orientation.z = pose.rot.z;
+            
+            this->imu_pub.publish(imu_msg);
+
+
+        }
+
         void WriteCloud(ConstLaserScanStampedPtr &_msg) {
             sensor_msgs::PointCloud cloud_msg;
-            cloud_msg.header.stamp = ros::Time(_msg->time().sec(), _msg->time().nsec());
+            // Send out a IMU update at the same time
+            ros::Time time = ros::Time(_msg->time().sec(), _msg->time().nsec());
+            // IMU
+            this->WriteIMU(time);
+            // Cloud
+            cloud_msg.header.stamp = time;
             int slices = _msg->scan().count();
             int vslices = _msg->scan().vertical_count();
             double theta_step = _msg->scan().angle_step();
@@ -191,6 +226,10 @@ namespace gazebo {
                 }
             }
             this->cloud_pub.publish(cloud_msg);
+
+        }
+
+        void WriteStampedPos(const boost::shared_ptr<physics::ModelState> state) {
 
         }
 
@@ -225,13 +264,13 @@ namespace gazebo {
             this->cloud_sub = this->node->Subscribe(scan_topic,
                     &SphereXPlugin::WriteCloud, this);
             //this->scan_pub = this->ros_node.advertise<sensor_msgs::LaserScan>(output_scan_topic, 1000);
-            this->cloud_pub = this->ros_node.advertise<sensor_msgs::PointCloud>(cloud_pub_topic, 1000);
+            this->cloud_pub = this->ros_node.advertise<sensor_msgs::PointCloud>(cloud_pub_topic, 10000);
         }
 
         void SetupIMU() {
             this->imu = sensors::get_sensor("imu");
             this->imu->SetActive(true);
-            this->imu_pub = this->ros_node.advertise<sensor_msgs::Imu>(imu_pub_topic, 1000);
+            this->imu_pub = this->ros_node.advertise<sensor_msgs::Imu>(imu_pub_topic, 10000);
         }
 
         void SetupCamera() {
@@ -239,13 +278,13 @@ namespace gazebo {
             this->cam1->SetActive(true);
             this->cam1_sub = this->node->Subscribe(cam1_sub_topic,
                     &SphereXPlugin::WriteCam1, this);
-            this->cam1_pub = this->ros_node.advertise<sensor_msgs::Image>(cam1_pub_topic, 1000);
+            this->cam1_pub = this->ros_node.advertise<sensor_msgs::Image>(cam1_pub_topic, 10000);
         }
 
         void SetupThruster() {
             this->thruster_cmd_sub = this->ros_node.subscribe(
                     this->thruster_cmd_sub_topic,
-                    1000,
+                    10000,
                     &SphereXPlugin::ApplyImpulse,
                     this
                     );

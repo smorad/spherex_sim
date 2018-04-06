@@ -5,11 +5,11 @@
         <link name="SphereXOuter">
             <pose>0 0 0.3 1.57 0 0</pose>
             <inertial>
-                <mass>2.5</mass>
+                <mass>3</mass>
                 <inertia>
-                    <ixx>0.75</ixx>
-                    <iyy>0.75</iyy>
-                    <izz>0.75</izz>
+                    <ixx>0.108</ixx>
+                    <iyy>0.108</iyy>
+                    <izz>0.108</izz>
                     <ixy>0</ixy>
                     <ixz>0</ixz>
                     <iyz>0</iyz> 
@@ -94,11 +94,12 @@
 
             <pose>0 0 0.3 1.57 0 0</pose>
             <inertial>
-                <mass>0.5</mass>
+                <mass>0.0001</mass>
                 <inertia>
-                    <ixx>0.03</ixx>
-                    <iyy>0.03</iyy>
-                    <izz>0.03</izz>
+                    <!-- 0.0 values will crash gazebo -->
+                    <ixx>0.0001</ixx>
+                    <iyy>0.0001</iyy>
+                    <izz>0.0001</izz>
                     <ixy>0</ixy>
                     <ixz>0</ixz>
                     <iyz>0</iyz> 
