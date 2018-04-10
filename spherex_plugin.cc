@@ -65,6 +65,21 @@ namespace gazebo {
             this->SetupCamera();
             this->SetupThruster();
 
+            // Bind physics update event to onupdate
+            //this->updateConnection = event::Events::ConnectWorldUpdateBegin(
+            //        std::bind(&SphereXPlugin::OnUpdate, this));
+
+        }
+
+        // Runs every dynamics simulation iteration
+
+        void OnUpdate() {
+            // Apply thruster force
+            if (!this->thrust_link){
+                std::cerr << "Detecting thrust link..." << std::endl;
+                this->thrust_link = this->model->GetLink("SphereX::SphereXMid");
+            }
+            this->thrust_link->AddForce(thrust_vec);
         }
 
         /// \brief Set the velocity of the Velodyne
@@ -79,6 +94,7 @@ namespace gazebo {
         void ApplyImpulse(const std_msgs::Float64MultiArray::Ptr &_msg) {
             // Apply impulse in the body frame
             // Msg in the form <x, y, z, duration, local>
+            // Tickrate is 0.001s
 
             common::Time t;
             auto link = this->model->GetLink("SphereX::SphereXMid");
@@ -92,7 +108,9 @@ namespace gazebo {
                 std::cerr << "Not applying force, linkptr is " << link << std::endl;
                 return;
             }
-            math::Vector3 f(_msg->data[0], _msg->data[1], _msg->data[2]);
+            // f = m * dv / t
+            float force = 3 * _msg->data[3] / 0.001;
+            math::Vector3 f(force * _msg->data[0], force * _msg->data[1], force * _msg->data[2]);
             if (_msg->data[4]) {
                 link->AddForce(f);
             } else {
@@ -187,14 +205,27 @@ namespace gazebo {
         void WriteIMU(ros::Time t) {
             sensor_msgs::Imu imu_msg;
             math::Pose pose = this->model->GetWorldPose();
+            math::Vector3 acc = this->model->GetWorldLinearAccel();
+            math::Vector3 vel = this->model->GetWorldAngularVel();
 
             imu_msg.header.stamp = t;
+
             imu_msg.orientation.w = pose.rot.w;
             imu_msg.orientation.x = pose.rot.x;
             imu_msg.orientation.y = pose.rot.y;
             imu_msg.orientation.z = pose.rot.z;
-            
-            this->imu_pub.publish(imu_msg);
+
+            imu_msg.angular_velocity.x = vel.x;
+            imu_msg.angular_velocity.y = vel.y;
+            imu_msg.angular_velocity.z = vel.z;
+
+            imu_msg.linear_acceleration.x = acc.x;
+            imu_msg.linear_acceleration.y = acc.y;
+            imu_msg.linear_acceleration.z = acc.z;
+
+
+
+            //this->imu_pub.publish(imu_msg);
 
 
         }
@@ -282,6 +313,7 @@ namespace gazebo {
         }
 
         void SetupThruster() {
+            this->thrust_vec = math::Vector3(0.0, 0.0, 0.0);
             this->thruster_cmd_sub = this->ros_node.subscribe(
                     this->thruster_cmd_sub_topic,
                     10000,
@@ -339,6 +371,9 @@ namespace gazebo {
 
         // thrust
         ros::Subscriber thruster_cmd_sub;
+        math::Vector3 thrust_vec;
+        physics::LinkPtr thrust_link;
+        private: event::ConnectionPtr updateConnection;
         // CANNOT HAVE ~/ prefix or gazebo will overwrite it
         std::string thruster_cmd_sub_topic = "thruster_cmd";
 
