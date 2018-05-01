@@ -64,6 +64,7 @@ namespace gazebo {
             this->SetupLidar();
             this->SetupCamera();
             this->SetupThruster();
+            this->SetupIMU();
 
             // Bind physics update event to onupdate
             //this->updateConnection = event::Events::ConnectWorldUpdateBegin(
@@ -225,7 +226,7 @@ namespace gazebo {
 
 
 
-            //this->imu_pub.publish(imu_msg);
+            this->imu_pub.publish(imu_msg);
 
 
         }
